@@ -1,0 +1,9 @@
+{
+  "name": "zugroulette",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "db-vendo-client": "^7.0.0"
+  }
+}

@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GleisGamble</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0a;
+  --bg2: #131313;
+  --bg3: #1a1a1a;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f2efe9;
+  --muted: #777370;
+  --accent: #e8ff47;
+  --accent-dark: #b8cc1a;
+  --red: #ff4444;
+  --green: #44ff88;
+  --mono: 'Courier New', monospace;
+  --display: 'Archivo Black', sans-serif;
+  --body: 'Archivo', sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* noise overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.4;
+}
+
+#app { max-width: 560px; margin: 0 auto; padding: 0 16px 80px; }
+
+/* header */
+#header {
+  padding: 32px 0 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+}
+
+#logo {
+  font-family: var(--display);
+  font-size: 32px;
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+#logo span { color: var(--accent); }
+
+#tagline {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--mono);
+  letter-spacing: 0.5px;
+}
+
+/* highscore strip */
+#hs-strip {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.hs-card {
+  flex: 1;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+}
+
+.hs-label { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-bottom: 2px; }
+.hs-val { font-family: var(--display); font-size: 20px; color: var(--accent); }
+
+/* section headers */
+.section-label {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* station input */
+#station-block { margin-bottom: 24px; }
+
+#station-wrap { position: relative; }
+
+#station-input {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 16px;
+  padding: 14px 16px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+#station-input:focus { border-color: var(--accent); }
+#station-input::placeholder { color: var(--muted); }
+
+#station-input.selected { border-color: var(--accent); background: rgba(232,255,71,0.05); }
+
+#autocomplete {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  z-index: 100;
+  overflow: hidden;
+  display: none;
+}
+
+.ac-item {
+  padding: 11px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover { background: var(--bg2); }
+.ac-item .ac-name { flex: 1; }
+.ac-item .ac-id { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+/* settings grid */
+#settings-block { margin-bottom: 28px; }
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.setting-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px;
+}
+
+.setting-card label {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--muted);
+  display: block;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.setting-card select {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14px;
+  padding: 8px 10px;
+  outline: none;
+  cursor: pointer;
+}
+
+.setting-card select:focus { border-color: var(--accent); }
+.setting-card select option { background: var(--bg3); }
+
+/* zug type toggles */
+#type-block { margin-bottom: 28px; }
+
+#type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.type-toggle {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+}
+
+.type-toggle:hover { border-color: rgba(255,255,255,0.25); color: var(--text); }
+.type-toggle.blocked { background: rgba(255,68,68,0.1); border-color: rgba(255,68,68,0.3); color: #ff8888; text-decoration: line-through; }
+.type-toggle.blocked:hover { background: rgba(255,68,68,0.05); }
+
+/* spin button */
+#spin-btn {
+  width: 100%;
+  background: var(--accent);
+  color: #0a0a0a;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--display);
+  font-size: 20px;
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: -0.5px;
+  margin-bottom: 24px;
+}
+
+#spin-btn:hover { background: var(--accent-dark); transform: translateY(-1px); }
+#spin-btn:active { transform: translateY(0); }
+#spin-btn:disabled { background: var(--bg3); color: var(--muted); cursor: not-allowed; transform: none; }
+
+/* result card */
+#result-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  display: none;
+  animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#result-header {
+  background: var(--accent);
+  color: #0a0a0a;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#result-train {
+  font-family: var(--display);
+  font-size: 22px;
+  letter-spacing: -0.5px;
+}
+
+#result-timer {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: bold;
+  color: #0a0a0a;
+}
+
+#result-timer.urgent { color: var(--red); animation: pulse 0.5s step-end infinite; }
+@keyframes pulse { 50% { opacity: 0.4; } }
+
+#result-body { padding: 18px; }
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.result-row:last-child { border-bottom: none; }
+.result-row .rk { color: var(--muted); font-size: 12px; font-family: var(--mono); }
+.result-row .rv { font-weight: 500; }
+.result-row .rv.delay { color: var(--red); }
+.result-row .rv.ok { color: var(--green); }
+
+#result-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.ra-btn {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.12s;
+  text-align: center;
+}
+
+.ra-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+.ra-btn.primary { background: var(--accent); color: #0a0a0a; border-color: var(--accent); font-weight: bold; }
+.ra-btn.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+
+/* status / loading */
+#status {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  padding: 12px;
+  display: none;
+}
+
+/* toast */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  padding: 10px 20px;
+  transition: transform 0.25s ease;
+  z-index: 500;
+  white-space: nowrap;
+}
+
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* score popup */
+#score-popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 600;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#score-popup.show { display: flex; }
+
+.score-box {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 32px;
+  text-align: center;
+  max-width: 340px;
+  width: 100%;
+  margin: 16px;
+}
+
+.score-emoji { font-size: 48px; margin-bottom: 12px; }
+.score-title { font-family: var(--display); font-size: 28px; margin-bottom: 6px; }
+.score-sub { font-size: 14px; color: var(--muted); margin-bottom: 20px; font-family: var(--mono); }
+.score-points { font-family: var(--display); font-size: 48px; color: var(--accent); margin-bottom: 24px; }
+.score-close { width: 100%; background: var(--accent); color: #0a0a0a; border: none; border-radius: 4px; font-family: var(--display); font-size: 18px; padding: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="header">
+    <div id="logo">Gleis<span>Gamble</span></div>
+    <div id="tagline">// spin. gleis. gamble.</div>
+  </div>
+
+  <div id="hs-strip">
+    <div class="hs-card">
+      <div class="hs-label">HIGHSCORE</div>
+      <div class="hs-val" id="hs-val">–</div>
+    </div>
+    <div class="hs-card">
+      <div class="hs-label">LETZTE RUNDE</div>
+      <div class="hs-val" id="last-val">–</div>
+    </div>
+    <div class="hs-card">
+      <div class="hs-label">SPINS HEUTE</div>
+      <div class="hs-val" id="spins-val">0</div>
+    </div>
+  </div>
+
+  <div id="station-block">
+    <div class="section-label">Startbahnhof</div>
+    <div id="station-wrap">
+      <input type="text" id="station-input" placeholder="Bahnhof suchen..." autocomplete="off">
+      <div id="autocomplete"></div>
+    </div>
+  </div>
+
+  <div id="settings-block">
+    <div class="section-label">Einstellungen</div>
+    <div class="settings-grid">
+      <div class="setting-card">
+        <label>MAXIMALE FAHRZEIT</label>
+        <select id="dur-select">
+          <option value="30">bis 30 min</option>
+          <option value="60" selected>bis 60 min</option>
+          <option value="90">bis 90 min</option>
+          <option value="120">bis 2 Std</option>
+          <option value="999">egal</option>
+        </select>
+      </div>
+      <div class="setting-card">
+        <label>S-BAHN FILTER</label>
+        <select id="sbahn-select">
+          <option value="all">alle züge</option>
+          <option value="only">nur S-Bahn</option>
+          <option value="no">keine S-Bahn</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div id="type-block">
+    <div class="section-label">Zugtypen sperren (antippen = gesperrt)</div>
+    <div id="type-grid">
+      <div class="type-toggle" data-type="RE">RE</div>
+      <div class="type-toggle" data-type="RB">RB</div>
+      <div class="type-toggle" data-type="S">S</div>
+      <div class="type-toggle" data-type="U">U</div>
+      <div class="type-toggle" data-type="EC">EC</div>
+      <div class="type-toggle" data-type="IC">IC</div>
+      <div class="type-toggle" data-type="NJ">NJ</div>
+      <div class="type-toggle" data-type="Bus">Bus</div>
+      <div class="type-toggle" data-type="Tram">Tram</div>
+      <div class="type-toggle" data-type="Fähre">Fähre</div>
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+  <button id="spin-btn" onclick="spin()" disabled>Bahnhof wählen</button>
+
+  <div id="result-card">
+    <div id="result-header">
+      <div id="result-train">RE 12345</div>
+      <div id="result-timer">05:00</div>
+    </div>
+    <div id="result-body"></div>
+    <div id="result-actions">
+      <button class="ra-btn" onclick="skip()">überspringen (–50 Pkt)</button>
+      <button class="ra-btn primary" onclick="confirm_board()">eingestiegen ✓</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="score-popup">
+  <div class="score-box">
+    <div class="score-emoji" id="popup-emoji">🎉</div>
+    <div class="score-title" id="popup-title">Nice!</div>
+    <div class="score-sub" id="popup-sub">punkte diese runde</div>
+    <div class="score-points" id="popup-points">+150</div>
+    <button class="score-close" onclick="closePopup()">weiter spielen</button>
+  </div>
+</div>
+
+<script>
+const API = ''; // leer = same origin (vercel functions)
+
+let selectedStation = null;
+let blockedTypes = new Set(['ICE']); // ICE immer geblockt
+let currentResult = null;
+let timerInterval = null;
+let timerSeconds = 0;
+let sessionScore = 0;
+
+// ─── HIGHSCORE / STATS ───────────────────────────────────
+function getStats() {
+  try { return JSON.parse(localStorage.getItem('gg-stats') || '{}'); } catch { return {}; }
+}
+
+function saveStats(s) { localStorage.setItem('gg-stats', JSON.stringify(s)); }
+
+function updateHsDisplay() {
+  const s = getStats();
+  const today = new Date().toDateString();
+  document.getElementById('hs-val').textContent = s.highscore ? s.highscore + ' Pkt' : '–';
+  document.getElementById('last-val').textContent = s.lastScore ? s.lastScore + ' Pkt' : '–';
+  document.getElementById('spins-val').textContent = s.spinsToday && s.spinsDate === today ? s.spinsToday : 0;
+}
+
+function addSpin() {
+  const s = getStats();
+  const today = new Date().toDateString();
+  s.spinsToday = s.spinsDate === today ? (s.spinsToday || 0) + 1 : 1;
+  s.spinsDate = today;
+  saveStats(s);
+  updateHsDisplay();
+}
+
+function addScore(pts) {
+  sessionScore += pts;
+  const s = getStats();
+  s.lastScore = sessionScore;
+  if (!s.highscore || sessionScore > s.highscore) s.highscore = sessionScore;
+  saveStats(s);
+  updateHsDisplay();
+}
+
+// ─── STATION SEARCH ──────────────────────────────────────
+let acTimeout = null;
+
+document.getElementById('station-input').addEventListener('input', function() {
+  const val = this.value.trim();
+  selectedStation = null;
+  this.classList.remove('selected');
+  document.getElementById('spin-btn').disabled = true;
+  document.getElementById('spin-btn').textContent = 'Bahnhof wählen';
+  clearTimeout(acTimeout);
+  if (val.length < 2) { closeAc(); return; }
+  acTimeout = setTimeout(() => searchStation(val), 300);
+});
+
+async function searchStation(q) {
+  try {
+    const r = await fetch(`${API}/api/stations?query=${encodeURIComponent(q)}`);
+    const data = await r.json();
+    showAc(data.locations || []);
+  } catch { closeAc(); }
+}
+
+function showAc(locations) {
+  const box = document.getElementById('autocomplete');
+  if (!locations.length) { box.style.display = 'none'; return; }
+  box.innerHTML = '';
+  locations.slice(0, 6).forEach(loc => {
+    const div = document.createElement('div');
+    div.className = 'ac-item';
+    div.innerHTML = `<span class="ac-name">${loc.name}</span><span class="ac-id">${loc.id || ''}</span>`;
+    div.onclick = () => selectStation(loc);
+    box.appendChild(div);
+  });
+  box.style.display = 'block';
+}
+
+function closeAc() { document.getElementById('autocomplete').style.display = 'none'; }
+
+function selectStation(loc) {
+  selectedStation = loc;
+  document.getElementById('station-input').value = loc.name;
+  document.getElementById('station-input').classList.add('selected');
+  document.getElementById('spin-btn').disabled = false;
+  document.getElementById('spin-btn').textContent = 'Spin!';
+  closeAc();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#station-wrap')) closeAc();
+});
+
+// ─── TYPE TOGGLES ────────────────────────────────────────
+document.querySelectorAll('.type-toggle').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const t = this.dataset.type;
+    if (blockedTypes.has(t)) {
+      blockedTypes.delete(t);
+      this.classList.remove('blocked');
+    } else {
+      blockedTypes.add(t);
+      this.classList.add('blocked');
+    }
+  });
+});
+
+// ─── HELPERS ─────────────────────────────────────────────
+function getProductType(line) {
+  if (!line) return 'Zug';
+  const name = (line.name || line.fahrtNr || '').toUpperCase();
+  const product = (line.product || line.productName || '').toLowerCase();
+  if (product === 'national-express' || name.startsWith('ICE')) return 'ICE';
+  if (product === 'national' || name.startsWith('EC') || name.startsWith('IC')) return name.startsWith('EC') ? 'EC' : 'IC';
+  if (product === 'regional-exp' || name.startsWith('RE')) return 'RE';
+  if (product === 'regional' || name.startsWith('RB')) return 'RB';
+  if (product === 'suburban' || name.startsWith('S')) return 'S';
+  if (product === 'subway' || name.startsWith('U')) return 'U';
+  if (product === 'tram') return 'Tram';
+  if (product === 'bus') return 'Bus';
+  if (product === 'ferry') return 'Fähre';
+  if (name.startsWith('NJ')) return 'NJ';
+  return (line.name || '').split(' ')[0] || 'Zug';
+}
+
+function isBlocked(dep) {
+  const type = getProductType(dep.line);
+  if (type === 'ICE') return true; // immer
+  if (blockedTypes.has(type)) return true;
+
+  const sbahn = document.getElementById('sbahn-select').value;
+  if (sbahn === 'only' && type !== 'S') return true;
+  if (sbahn === 'no' && type === 'S') return true;
+
+  return false;
+}
+
+function getDuration(dep) {
+  if (!dep.destination || !dep.plannedWhen) return 999;
+  // wir haben keine arrival time direkt, nutze plannedArrival falls vorhanden
+  if (dep.plannedArrival) {
+    return Math.round((new Date(dep.plannedArrival) - new Date(dep.plannedWhen)) / 60000);
+  }
+  return 45; // fallback
+}
+
+function getDelay(dep) {
+  return dep.delay ? Math.round(dep.delay / 60) : 0;
+}
+
+function formatTime(iso) {
+  if (!iso) return '–';
+  const d = new Date(iso);
+  return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ─── SPIN ─────────────────────────────────────────────────
+async function spin() {
+  if (!selectedStation) return;
+
+  stopTimer();
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('status').style.display = 'block';
+  document.getElementById('status').textContent = 'lade abfahrten...';
+  document.getElementById('spin-btn').disabled = true;
+
+  addSpin();
+
+  try {
+    const dur = document.getElementById('dur-select').value;
+    const r = await fetch(`${API}/api/departures?stationId=${encodeURIComponent(selectedStation.id)}&duration=90`);
+    const data = await r.json();
+
+    let deps = (data.departures || []).filter(d => {
+      if (isBlocked(d)) return false;
+      const depDur = getDuration(d);
+      if (dur !== '999' && depDur > parseInt(dur)) return false;
+      // nur züge die in max 20 min abfahren
+      const inMin = Math.round((new Date(d.when || d.plannedWhen) - new Date()) / 60000);
+      if (inMin < 1 || inMin > 20) return false;
+      return true;
+    });
+
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('spin-btn').disabled = false;
+
+    if (!deps.length) {
+      showToast('keine passenden züge gefunden — andere einstellungen probieren');
+      return;
+    }
+
+    // random pick
+    const dep = deps[Math.floor(Math.random() * deps.length)];
+    showResult(dep);
+
+  } catch(e) {
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('spin-btn').disabled = false;
+    showToast('fehler beim laden — vercel function ok?');
+  }
+}
+
+function showResult(dep) {
+  currentResult = dep;
+  const type = getProductType(dep.line);
+  const lineName = dep.line?.name || type;
+  const dest = dep.direction || dep.destination?.name || '?';
+  const delay = getDelay(dep);
+  const plannedDep = dep.plannedWhen;
+  const actualDep = dep.when || dep.plannedWhen;
+  const platform = dep.plannedPlatform || dep.platform || '–';
+  const depDur = getDuration(dep);
+
+  document.getElementById('result-train').textContent = lineName + ' → ' + dest;
+
+  // body rows
+  const body = document.getElementById('result-body');
+  body.innerHTML = `
+    <div class="result-row"><span class="rk">GLEIS</span><span class="rv">${platform}</span></div>
+    <div class="result-row"><span class="rk">ABFAHRT (PLAN)</span><span class="rv">${formatTime(plannedDep)}</span></div>
+    <div class="result-row"><span class="rk">VERSPÄTUNG</span><span class="rv ${delay > 0 ? 'delay' : 'ok'}">${delay > 0 ? '+' + delay + ' min' : 'pünktlich'}</span></div>
+    <div class="result-row"><span class="rk">FAHRZEIT CA.</span><span class="rv">${depDur < 999 ? '~' + depDur + ' min' : '–'}</span></div>
+    <div class="result-row"><span class="rk">ZUGTYP</span><span class="rv">${type}</span></div>
+  `;
+
+  document.getElementById('result-card').style.display = 'block';
+
+  // timer — sekunden bis abfahrt
+  const secsLeft = Math.max(0, Math.round((new Date(actualDep) - new Date()) / 1000));
+  startTimer(secsLeft);
+}
+
+// ─── TIMER ───────────────────────────────────────────────
+function startTimer(secs) {
+  stopTimer();
+  timerSeconds = secs;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    updateTimerDisplay();
+    if (timerSeconds <= 0) {
+      stopTimer();
+      timeUp();
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('result-timer');
+  const m = Math.floor(Math.abs(timerSeconds) / 60);
+  const s = Math.abs(timerSeconds) % 60;
+  el.textContent = (timerSeconds < 0 ? '-' : '') + m + ':' + String(s).padStart(2, '0');
+  el.className = timerSeconds <= 30 ? 'urgent' : '';
+}
+
+function timeUp() {
+  showToast('zu spät! zug abgefahren 😭');
+  document.getElementById('result-card').style.display = 'none';
+  // penalty
+  showPopup('😭', 'Zu spät!', 'zug verpasst — keine punkte', 0, false);
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────
+function skip() {
+  stopTimer();
+  document.getElementById('result-card').style.display = 'none';
+  const penalty = 50;
+  addScore(-penalty);
+  showPopup('😬', 'Übersprungen', '-50 punkte', -penalty, false);
+}
+
+function confirm_board() {
+  stopTimer();
+  document.getElementById('result-card').style.display = 'none';
+
+  // punkte berechnung
+  const delay = currentResult ? getDelay(currentResult) : 0;
+  const secsUsed = timerSeconds; // wie viel zeit noch übrig war
+  const speedBonus = Math.round(secsUsed / 10);
+  const delayBonus = delay > 30 ? 50 : delay > 15 ? 25 : 0;
+  const base = 100;
+  const total = base + speedBonus + delayBonus;
+
+  addScore(total);
+  const sub = `basis +${base} / speed +${speedBonus}${delayBonus ? ' / chaos-bonus +' + delayBonus : ''}`;
+  showPopup('🚂', 'Eingestiegen!', sub, total, true);
+}
+
+// ─── POPUP ───────────────────────────────────────────────
+function showPopup(emoji, title, sub, pts, good) {
+  document.getElementById('popup-emoji').textContent = emoji;
+  document.getElementById('popup-title').textContent = title;
+  document.getElementById('popup-sub').textContent = sub;
+  const pEl = document.getElementById('popup-points');
+  pEl.textContent = (pts >= 0 ? '+' : '') + pts + ' Pkt';
+  pEl.style.color = good ? 'var(--accent)' : 'var(--red)';
+  document.getElementById('score-popup').classList.add('show');
+}
+
+function closePopup() {
+  document.getElementById('score-popup').classList.remove('show');
+}
+
+// ─── TOAST ───────────────────────────────────────────────
+let toastTimeout;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── INIT ────────────────────────────────────────────────
+updateHsDisplay();
+</script>
+</body>
+</html>
