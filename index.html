@@ -674,7 +674,8 @@ async function spin() {
       data = { departures: Array.isArray(raw) ? raw : (raw.departures || []) };
     }
 
-    let deps = (data.departures || []).filter(d => {
+    const rawDeps = Array.isArray(data.departures) ? data.departures : (data.departures?.departures || []);
+    let deps = rawDeps.filter(d => {
       if (isBlocked(d)) return false;
       const depDur = getDuration(d);
       if (dur !== '999' && depDur > parseInt(dur)) return false;
