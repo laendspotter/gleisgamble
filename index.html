@@ -538,10 +538,22 @@ document.getElementById('station-input').addEventListener('input', function() {
 });
 
 async function searchStation(q) {
+  // erst vercel function versuchen, dann direkt hafas als fallback
   try {
     const r = await fetch(`${API}/api/stations?query=${encodeURIComponent(q)}`);
+    if (r.ok) {
+      const data = await r.json();
+      showAc(data.locations || []);
+      return;
+    }
+  } catch {}
+  // fallback: direkt db-strecken-suche via v6.db.transport.rest
+  try {
+    const r = await fetch(`https://v6.db.transport.rest/locations?query=${encodeURIComponent(q)}&results=8&stops=true&addresses=false&poi=false`, {
+      headers: { 'Accept': 'application/json' }
+    });
     const data = await r.json();
-    showAc(data.locations || []);
+    showAc(Array.isArray(data) ? data : []);
   } catch { closeAc(); }
 }
 
@@ -651,16 +663,24 @@ async function spin() {
 
   try {
     const dur = document.getElementById('dur-select').value;
-    const r = await fetch(`${API}/api/departures?stationId=${encodeURIComponent(selectedStation.id)}&duration=90`);
-    const data = await r.json();
+    let data;
+    try {
+      const r = await fetch(`${API}/api/departures?stationId=${encodeURIComponent(selectedStation.id)}&duration=90`);
+      if (r.ok) data = await r.json();
+    } catch {}
+    if (!data) {
+      const r2 = await fetch(`https://v6.db.transport.rest/stops/${encodeURIComponent(selectedStation.id)}/departures?duration=90&results=80`, { headers: { 'Accept': 'application/json' } });
+      const raw = await r2.json();
+      data = { departures: Array.isArray(raw) ? raw : (raw.departures || []) };
+    }
 
     let deps = (data.departures || []).filter(d => {
       if (isBlocked(d)) return false;
       const depDur = getDuration(d);
       if (dur !== '999' && depDur > parseInt(dur)) return false;
-      // nur züge die in max 20 min abfahren
+      if (d.cancelled) return false;
       const inMin = Math.round((new Date(d.when || d.plannedWhen) - new Date()) / 60000);
-      if (inMin < 1 || inMin > 20) return false;
+      if (inMin < 0 || inMin > 60) return false;
       return true;
     });
 
